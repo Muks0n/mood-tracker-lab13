@@ -136,6 +136,83 @@ function drawMoodChart(records)
     chartAnimationId = requestAnimationFrame(animate);
 }
 
+// Практична №13: таблиця маршрутів SPA.
+// View-функції змінюють реактивний стан Vue.
+
+function renderHome(vm)
+{
+    vm.currentView = "home";
+}
+
+function renderHistory(vm)
+{
+    vm.currentView = "history";
+}
+
+function renderStats(vm)
+{
+    vm.currentView = "stats";
+}
+
+function renderDetail(vm, params)
+{
+    vm.selectedId = Number(params.id);
+    vm.currentView = "detail";
+}
+
+const routes = [
+    { path: "/", view: renderHome },
+    { path: "/history", view: renderHistory },
+    { path: "/stats", view: renderStats },
+    { path: "/history/:id", view: renderDetail }
+];
+
+// Крок 4: пошук маршруту та отримання параметрів.
+function matchRoute(path)
+{
+    const pathParts = path.split("/").filter(Boolean);
+
+    for (const route of routes)
+    {
+        const routeParts = route.path.split("/").filter(Boolean);
+
+        if (routeParts.length !== pathParts.length)
+        {
+            continue;
+        }
+
+        const params = {};
+
+        const matched = routeParts.every((part, index) => {
+            if (part.startsWith(":"))
+            {
+                params[part.slice(1)] = pathParts[index];
+                return true;
+            }
+
+            return part === pathParts[index];
+        });
+
+        if (matched)
+        {
+            return { view: route.view, params };
+        }
+    }
+
+    return null;
+}
+
+// Крок 6: перехід без перезавантаження сторінки.
+function navigate(path)
+{
+    if (location.hash.slice(1) === path)
+    {
+        return;
+    }
+
+    location.hash = path;
+}
+
 // Практична №10: компонент запису настрою.
 const MoodEntry = {
     props: {
@@ -241,6 +318,8 @@ const app = Vue.createApp({
     {
         return {
             moodRecords: [],
+            currentView: "home",
+            selectedId: null,
 
             editingId: null,
 
@@ -258,6 +337,13 @@ const app = Vue.createApp({
     },
 
     computed: {
+        selectedRecord()
+        {
+            return this.moodRecords.find(
+                item => item.id === this.selectedId
+            ) || null;
+        },
+
         averageMood()
         {
             if (this.moodRecords.length === 0)
@@ -279,7 +365,10 @@ const app = Vue.createApp({
         moodRecords: {
             handler(newRecords)
             {
-                drawMoodChart(newRecords);
+                if (this.currentView === "stats")
+                {
+                    this.$nextTick(() => drawMoodChart(newRecords));
+                }
             },
 
             deep: true
@@ -287,6 +376,32 @@ const app = Vue.createApp({
     },
 
     methods: {
+        // Практична №13: відображення сторінки за маршрутом.
+        renderRoute()
+        {
+            const path = location.hash.slice(1) || "/";
+            const matched = matchRoute(path);
+
+            if (matched)
+            {
+                matched.view(this, matched.params);
+            }
+            else
+            {
+                this.currentView = "notFound";
+            }
+
+            if (this.currentView === "stats")
+            {
+                this.$nextTick(() => drawMoodChart(this.moodRecords));
+            }
+            else if (chartAnimationId !== null)
+            {
+                cancelAnimationFrame(chartAnimationId);
+                chartAnimationId = null;
+            }
+        },
+
         // Практична №11: додавання або редагування запису.
         async saveMoodRecord()
         {
@@ -398,8 +513,12 @@ const app = Vue.createApp({
             this.newMood = String(record.mood);
             this.newNote = record.note;
 
-            document.getElementById("mood-tracker")
-                .scrollIntoView({ behavior: "smooth" });
+            navigate("/");
+
+            this.$nextTick(() => {
+                document.getElementById("mood-tracker")
+                    .scrollIntoView({ behavior: "smooth" });
+            });
         },
 
         cancelEditing()
@@ -441,6 +560,14 @@ const app = Vue.createApp({
                 if (this.editingId === id)
                 {
                     this.cancelEditing();
+                }
+
+                if (
+                    this.currentView === "detail" &&
+                    this.selectedId === id
+                )
+                {
+                    navigate("/history");
                 }
             }
             catch (error)
@@ -544,8 +671,50 @@ const app = Vue.createApp({
 
     mounted()
     {
+        // Практична №13: реакція на зміну hash.
+        this.routeHandler = () => this.renderRoute();
+
+        window.addEventListener(
+            "hashchange",
+            this.routeHandler
+        );
+
+        // Перехоплення кліків по навігаційних посиланнях.
+        this.linkHandler = (event) => {
+            const link = event.target.closest("a[data-link]");
+
+            if (!link)
+            {
+                return;
+            }
+
+            event.preventDefault();
+            navigate(link.getAttribute("href").slice(1));
+        };
+
+        document.addEventListener("click", this.linkHandler);
+
+        this.renderRoute();
         this.loadSavedMoodRecords();
         this.loadData();
+    },
+
+    beforeUnmount()
+    {
+        window.removeEventListener(
+            "hashchange",
+            this.routeHandler
+        );
+
+        document.removeEventListener(
+            "click",
+            this.linkHandler
+        );
+
+        if (chartAnimationId !== null)
+        {
+            cancelAnimationFrame(chartAnimationId);
+        }
     }
 });
 
