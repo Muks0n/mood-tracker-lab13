@@ -4,33 +4,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Трекер настрою</title>
-
     <link rel="stylesheet" href="css/style.css">
-
-    <!-- Практична №10: підключення Vue 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-
-    <!-- Практична №11: локальні сховища -->
     <script src="js/storage.js" defer></script>
     <script src="js/app.js" defer></script>
 </head>
-
 <body>
     <header class="site-header">
         <h1>Трекер настрою</h1>
 
+        <!-- Практична №13: клієнтська навігація -->
         <nav>
-            <a href="#mood-tracker">Відмітити настрій</a>
-            <a href="#history">Історія записів</a>
-            <a href="#api-records">Записи з API</a>
+            <a href="#/" data-link>Відмітити настрій</a>
+            <a href="#/history" data-link>Історія записів</a>
+            <a href="#/stats" data-link>Статистика</a>
         </nav>
     </header>
 
     <div id="app" class="page-layout" v-cloak>
-        <main>
-            <section id="mood-tracker">
+        <!-- Спільний контейнер сторінок SPA -->
+        <main id="router-view">
+
+            <!-- v-show зберігає незбережений текст форми -->
+            <section id="mood-tracker" v-show="currentView === 'home'">
                 <h2>Відмітити настрій</h2>
 
                 <form id="mood-form" @submit.prevent="saveMoodRecord">
@@ -43,9 +40,7 @@
                         required
                     >
 
-                    <label for="mood">
-                        Рівень настрою (1–5):
-                    </label>
+                    <label for="mood">Рівень настрою (1–5):</label>
                     <input
                         type="number"
                         id="mood"
@@ -93,86 +88,152 @@
                 </p>
             </section>
 
-            <section id="history">
+            <section id="history" v-show="currentView === 'history'">
                 <h2>Історія записів</h2>
 
+                <p
+                    class="storage-error"
+                    v-if="storageError"
+                    role="alert"
+                >
+                    {{ storageError }}
+                </p>
+
                 <div class="cards" id="mood-history">
-                    <mood-entry
+                    <div
                         v-for="record in moodRecords"
                         :key="record.id"
-                        :id="record.id"
-                        :date="record.date"
-                        :mood="record.mood"
-                        :note="record.note"
+                    >
+                        <mood-entry
+                            :id="record.id"
+                            :date="record.date"
+                            :mood="record.mood"
+                            :note="record.note"
+                            @edit="startEditing"
+                            @delete="removeMoodRecord"
+                        ></mood-entry>
+
+                        <a
+                            :href="'#/history/' + record.id"
+                            data-link
+                        >
+                            Переглянути запис
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Збереження функціональності API -->
+                <section id="api-records">
+                    <h2>Записи настрою з API</h2>
+
+                    <button
+                        type="button"
+                        id="refresh-button"
+                        @click="loadData"
+                        :disabled="isLoading"
+                    >
+                        Оновити
+                    </button>
+
+                    <p
+                        id="loading-message"
+                        role="status"
+                        v-if="isLoading"
+                    >
+                        Завантаження...
+                    </p>
+
+                    <p
+                        id="error-message"
+                        role="alert"
+                        v-if="errorMessage"
+                    >
+                        {{ errorMessage }}
+                    </p>
+
+                    <div class="cards" id="api-history">
+                        <article
+                            class="mood-card api-card"
+                            v-for="record in apiRecords"
+                            :key="record.id"
+                        >
+                            <h3>{{ record.name }}</h3>
+                            <p>{{ record.body }}</p>
+                            <p>Email: {{ record.email }}</p>
+                        </article>
+                    </div>
+                </section>
+            </section>
+
+            <!-- Практична №13: деталі запису за параметром id -->
+            <section id="record-detail" v-show="currentView === 'detail'">
+                <h2>Деталі запису</h2>
+
+                <template v-if="selectedRecord">
+                    <mood-entry
+                        :id="selectedRecord.id"
+                        :date="selectedRecord.date"
+                        :mood="selectedRecord.mood"
+                        :note="selectedRecord.note"
                         @edit="startEditing"
                         @delete="removeMoodRecord"
                     ></mood-entry>
-                </div>
+                </template>
+
+                <p v-else>Запис не знайдено.</p>
+
+                <p>
+                    <a href="#/history" data-link>
+                        До історії записів
+                    </a>
+                </p>
             </section>
 
-            <!-- Практична №12: Canvas-графік настрою -->
-            <section id="mood-chart">
-                <h2>Динаміка настрою</h2>
+            <section id="stats" v-show="currentView === 'stats'">
+                <h2>Статистика настрою</h2>
 
-                <canvas
-                    id="mood-canvas"
-                    width="700"
-                    height="300"
-                >
-                    Ваш браузер не підтримує Canvas.
-                </canvas>
-            </section>
-
-            <section id="api-records">
-                <h2>Записи настрою з API</h2>
-
-                <button
-                    type="button"
-                    id="refresh-button"
-                    @click="loadData"
-                    :disabled="isLoading"
-                >
-                    Оновити
-                </button>
-
-                <p
-                    id="loading-message"
-                    role="status"
-                    v-if="isLoading"
-                >
-                    Завантаження...
+                <p v-if="moodRecords.length === 0">
+                    Записів настрою поки немає.
                 </p>
 
-                <p
-                    id="error-message"
-                    role="alert"
-                    v-if="errorMessage"
-                >
-                    {{ errorMessage }}
+                <p v-else>
+                    Середній настрій за наявними записами:
+                    {{ averageMood.toFixed(2) }} / 5.
+                    {{ averageMood >= 3.5
+                        ? 'Гарний тиждень!'
+                        : 'Важкий тиждень.' }}
                 </p>
 
-                <div class="cards" id="api-history">
-                    <article
-                        class="mood-card api-card"
-                        v-for="record in apiRecords"
-                        :key="record.id"
+                <!-- Практична №12: Canvas-графік -->
+                <section id="mood-chart">
+                    <h2>Динаміка настрою</h2>
+
+                    <canvas
+                        id="mood-canvas"
+                        width="700"
+                        height="300"
                     >
-                        <h3>{{ record.name }}</h3>
-                        <p>{{ record.body }}</p>
-                        <p>Email: {{ record.email }}</p>
-                    </article>
-                </div>
+                        Ваш браузер не підтримує Canvas.
+                    </canvas>
+                </section>
+            </section>
+
+            <!-- Практична №13: невідомий маршрут -->
+            <section id="not-found" v-show="currentView === 'notFound'">
+                <h2>Сторінку не знайдено</h2>
+                <p>Такого маршруту не існує.</p>
+                <a href="#/" data-link>На головну</a>
             </section>
         </main>
 
         <aside>
             <h2>Короткий підсумок</h2>
 
-            <p id="avg-mood" v-if="moodRecords.length === 0">
+            <p v-if="moodRecords.length === 0">
                 Записів настрою поки немає.
             </p>
 
-            <p id="avg-mood" v-else>
+            <p v-else>
                 Середній настрій:
                 {{ averageMood.toFixed(2) }} / 5.
                 {{ averageMood >= 3.5
