@@ -13,8 +13,6 @@
 <body>
     <header class="site-header">
         <h1>Трекер настрою</h1>
-
-        <!-- Практична №13: клієнтська навігація -->
         <nav>
             <a href="#/" data-link>Відмітити настрій</a>
             <a href="#/history" data-link>Історія записів</a>
@@ -23,216 +21,35 @@
     </header>
 
     <div id="app" class="page-layout" v-cloak>
-        <!-- Спільний контейнер сторінок SPA -->
+        <!-- Крок 5: Vue замінює представлення у спільному контейнері. -->
         <main id="router-view">
-
-            <!-- v-show зберігає незбережений текст форми -->
-            <section id="mood-tracker" v-show="currentView === 'home'">
-                <h2>Відмітити настрій</h2>
-
-                <form id="mood-form" @submit.prevent="saveMoodRecord">
-                    <label for="date">Дата:</label>
-                    <input
-                        type="date"
-                        id="date"
-                        name="date"
-                        v-model="newDate"
-                        required
-                    >
-
-                    <label for="mood">Рівень настрою (1–5):</label>
-                    <input
-                        type="number"
-                        id="mood"
-                        name="mood"
-                        min="1"
-                        max="5"
-                        step="1"
-                        v-model="newMood"
-                        required
-                    >
-
-                    <label for="note">Примітка:</label>
-                    <input
-                        type="text"
-                        id="note"
-                        name="note"
-                        maxlength="200"
-                        v-model="newNote"
-                    >
-
-                    <p id="note-counter">
-                        Залишилося символів:
-                        {{ 200 - newNote.length }}
-                    </p>
-
-                    <button type="submit" :disabled="!storageReady">
-                        {{ editingId === null ? 'Зберегти' : 'Оновити' }}
-                    </button>
-
-                    <button
-                        v-if="editingId !== null"
-                        type="button"
-                        @click="cancelEditing"
-                    >
-                        Скасувати
-                    </button>
-                </form>
-
-                <p
-                    class="storage-error"
-                    v-if="storageError"
-                    role="alert"
-                >
-                    {{ storageError }}
-                </p>
-            </section>
-
-            <section id="history" v-show="currentView === 'history'">
-                <h2>Історія записів</h2>
-
-                <p
-                    class="storage-error"
-                    v-if="storageError"
-                    role="alert"
-                >
-                    {{ storageError }}
-                </p>
-
-                <div class="cards" id="mood-history">
-                    <div
-                        v-for="record in moodRecords"
-                        :key="record.id"
-                    >
-                        <mood-entry
-                            :id="record.id"
-                            :date="record.date"
-                            :mood="record.mood"
-                            :note="record.note"
-                            @edit="startEditing"
-                            @delete="removeMoodRecord"
-                        ></mood-entry>
-
-                        <a
-                            :href="'#/history/' + record.id"
-                            data-link
-                        >
-                            Переглянути запис
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Збереження функціональності API -->
-                <section id="api-records">
-                    <h2>Записи настрою з API</h2>
-
-                    <button
-                        type="button"
-                        id="refresh-button"
-                        @click="loadData"
-                        :disabled="isLoading"
-                    >
-                        Оновити
-                    </button>
-
-                    <p
-                        id="loading-message"
-                        role="status"
-                        v-if="isLoading"
-                    >
-                        Завантаження...
-                    </p>
-
-                    <p
-                        id="error-message"
-                        role="alert"
-                        v-if="errorMessage"
-                    >
-                        {{ errorMessage }}
-                    </p>
-
-                    <div class="cards" id="api-history">
-                        <article
-                            class="mood-card api-card"
-                            v-for="record in apiRecords"
-                            :key="record.id"
-                        >
-                            <h3>{{ record.name }}</h3>
-                            <p>{{ record.body }}</p>
-                            <p>Email: {{ record.email }}</p>
-                        </article>
-                    </div>
-                </section>
-            </section>
-
-            <!-- Практична №13: деталі запису за параметром id -->
-            <section id="record-detail" v-show="currentView === 'detail'">
-                <h2>Деталі запису</h2>
-
-                <template v-if="selectedRecord">
-                    <mood-entry
-                        :id="selectedRecord.id"
-                        :date="selectedRecord.date"
-                        :mood="selectedRecord.mood"
-                        :note="selectedRecord.note"
-                        @edit="startEditing"
-                        @delete="removeMoodRecord"
-                    ></mood-entry>
-                </template>
-
-                <p v-else>Запис не знайдено.</p>
-
-                <p>
-                    <a href="#/history" data-link>
-                        До історії записів
-                    </a>
-                </p>
-            </section>
-
-            <section id="stats" v-show="currentView === 'stats'">
-                <h2>Статистика настрою</h2>
-
-                <p v-if="moodRecords.length === 0">
-                    Записів настрою поки немає.
-                </p>
-
-                <p v-else>
-                    Середній настрій за наявними записами:
-                    {{ averageMood.toFixed(2) }} / 5.
-                    {{ averageMood >= 3.5
-                        ? 'Гарний тиждень!'
-                        : 'Важкий тиждень.' }}
-                </p>
-
-                <!-- Практична №12: Canvas-графік -->
-                <section id="mood-chart">
-                    <h2>Динаміка настрою</h2>
-
-                    <canvas
-                        id="mood-canvas"
-                        width="700"
-                        height="300"
-                    >
-                        Ваш браузер не підтримує Canvas.
-                    </canvas>
-                </section>
-            </section>
-
-            <!-- Практична №13: невідомий маршрут -->
-            <section id="not-found" v-show="currentView === 'notFound'">
-                <h2>Сторінку не знайдено</h2>
-                <p>Такого маршруту не існує.</p>
-                <a href="#/" data-link>На головну</a>
-            </section>
+            <component
+                :is="currentViewComponent"
+                :mood-records="moodRecords"
+                :selected-record="selectedRecord"
+                :average-mood="averageMood"
+                :editing-id="editingId"
+                :storage-ready="storageReady"
+                :storage-error="storageError"
+                :api-records="apiRecords"
+                :is-loading="isLoading"
+                :error-message="errorMessage"
+                v-model:new-date="newDate"
+                v-model:new-mood="newMood"
+                v-model:new-note="newNote"
+                @save="saveMoodRecord"
+                @edit="startEditing"
+                @delete="removeMoodRecord"
+                @cancel-edit="cancelEditing"
+                @load-data="loadData"
+            ></component>
         </main>
 
         <aside>
             <h2>Короткий підсумок</h2>
-
             <p v-if="moodRecords.length === 0">
                 Записів настрою поки немає.
             </p>
-
             <p v-else>
                 Середній настрій:
                 {{ averageMood.toFixed(2) }} / 5.
@@ -242,6 +59,146 @@
             </p>
         </aside>
     </div>
+
+    <!-- Шаблони представлень залишаються в HTML,
+         а не переносяться повністю в app.js. -->
+
+    <template id="home-view-template">
+        <section id="mood-tracker">
+            <h2>Відмітити настрій</h2>
+            <form id="mood-form" @submit.prevent="$emit('save')">
+                <label for="date">Дата:</label>
+                <input type="date" id="date" name="date"
+                       :value="newDate"
+                       @input="$emit('update:newDate', $event.target.value)"
+                       required>
+
+                <label for="mood">Рівень настрою (1–5):</label>
+                <input type="number" id="mood" name="mood"
+                       min="1" max="5" step="1"
+                       :value="newMood"
+                       @input="$emit('update:newMood', $event.target.value)"
+                       required>
+
+                <label for="note">Примітка:</label>
+                <input type="text" id="note" name="note" maxlength="200"
+                       :value="newNote"
+                       @input="$emit('update:newNote', $event.target.value)">
+
+                <p id="note-counter">
+                    Залишилося символів: {{ 200 - newNote.length }}
+                </p>
+
+                <button type="submit" :disabled="!storageReady">
+                    {{ editingId === null ? 'Зберегти' : 'Оновити' }}
+                </button>
+                <button v-if="editingId !== null" type="button"
+                        @click="$emit('cancel-edit')">
+                    Скасувати
+                </button>
+            </form>
+            <p class="storage-error" v-if="storageError" role="alert">
+                {{ storageError }}
+            </p>
+        </section>
+    </template>
+
+    <template id="history-view-template">
+        <section id="history">
+            <h2>Історія записів</h2>
+            <p class="storage-error" v-if="storageError" role="alert">
+                {{ storageError }}
+            </p>
+
+            <div class="cards" id="mood-history">
+                <div v-for="record in moodRecords" :key="record.id">
+                    <mood-entry
+                        :id="record.id"
+                        :date="record.date"
+                        :mood="record.mood"
+                        :note="record.note"
+                        @edit="$emit('edit', $event)"
+                        @delete="$emit('delete', $event)"
+                    ></mood-entry>
+                    <a :href="'#/history/' + record.id" data-link>
+                        Переглянути запис
+                    </a>
+                </div>
+            </div>
+
+            <section id="api-records">
+                <h2>Записи настрою з API</h2>
+                <button type="button" id="refresh-button"
+                        @click="$emit('load-data')" :disabled="isLoading">
+                    Оновити
+                </button>
+                <p id="loading-message" role="status" v-if="isLoading">
+                    Завантаження...
+                </p>
+                <p id="error-message" role="alert" v-if="errorMessage">
+                    {{ errorMessage }}
+                </p>
+                <div class="cards" id="api-history">
+                    <article class="mood-card api-card"
+                             v-for="record in apiRecords" :key="record.id">
+                        <h3>{{ record.name }}</h3>
+                        <p>{{ record.body }}</p>
+                        <p>Email: {{ record.email }}</p>
+                    </article>
+                </div>
+            </section>
+        </section>
+    </template>
+
+    <template id="detail-view-template">
+        <section id="record-detail">
+            <h2>Деталі запису</h2>
+            <template v-if="selectedRecord">
+                <mood-entry
+                    :id="selectedRecord.id"
+                    :date="selectedRecord.date"
+                    :mood="selectedRecord.mood"
+                    :note="selectedRecord.note"
+                    @edit="$emit('edit', $event)"
+                    @delete="$emit('delete', $event)"
+                ></mood-entry>
+            </template>
+            <p v-else>Запис не знайдено.</p>
+            <p>
+                <a href="#/history" data-link>До історії записів</a>
+            </p>
+        </section>
+    </template>
+
+    <template id="stats-view-template">
+        <section id="stats">
+            <h2>Статистика настрою</h2>
+            <p v-if="moodRecords.length === 0">
+                Записів настрою поки немає.
+            </p>
+            <p v-else>
+                Середній настрій за наявними записами:
+                {{ averageMood.toFixed(2) }} / 5.
+                {{ averageMood >= 3.5
+                    ? 'Гарний тиждень!'
+                    : 'Важкий тиждень.' }}
+            </p>
+            <section id="mood-chart">
+                <h2>Динаміка настрою</h2>
+                <canvas id="mood-canvas" width="700" height="300">
+                    Ваш браузер не підтримує Canvas.
+                </canvas>
+            </section>
+        </section>
+    </template>
+
+    <template id="not-found-view-template">
+        <section id="not-found">
+            <h2>Сторінку не знайдено</h2>
+            <p>Такого маршруту не існує.</p>
+            <a href="#/" data-link>На головну</a>
+        </section>
+    </template>
 
     <footer>
         <p>

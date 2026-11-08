@@ -1,27 +1,22 @@
 
- // Обрано Vue 3, оскільки він підтримує реактивність
- // і компоненти та легко підключається через CDN.
-
- // Практична №11: вибір сховища.
- // "local" — localStorage, "indexed" — IndexedDB.
-
 const STORAGE_MODE = "indexed";
 
 const API_URL =
     "https://jsonplaceholder.typicode.com/comments?postId=1";
 
-// Практична №12. Варіант №3.
-// Canvas: анімований графік останніх 7 записів настрою.
-
+// Практична №12: анімований графік останніх 7 записів.
 const CHART_RECORD_COUNT = 7;
 let chartAnimationId = null;
 
 function drawMoodChart(records)
 {
     const canvas = document.getElementById("mood-canvas");
-    const ctx = canvas.getContext("2d");
 
-    // Скасування попередньої анімації.
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
     if (chartAnimationId !== null)
     {
         cancelAnimationFrame(chartAnimationId);
@@ -52,9 +47,11 @@ function drawMoodChart(records)
             startTime = timestamp;
         }
 
-        const progress = Math.min((timestamp - startTime) / 1000, 1);
+        const progress = Math.min(
+            (timestamp - startTime) / 1000,
+            1
+        );
 
-        // Очищення Canvas перед кожним кадром.
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Осі графіка.
@@ -67,22 +64,28 @@ function drawMoodChart(records)
         ctx.lineTo(right, bottom);
         ctx.stroke();
 
-        // Підписи рівнів настрою.
+        // Позначення рівнів настрою.
         ctx.fillStyle = "#403b43";
         ctx.font = "14px Arial";
 
         for (let mood = 1; mood <= 5; mood++)
         {
-            const y = bottom - (mood - 1) * (bottom - top) / 4;
+            const y = bottom -
+                (mood - 1) * (bottom - top) / 4;
+
             ctx.fillText(String(mood), left - 25, y + 5);
         }
 
-        // Підписи номерів записів.
+        // Номери записів.
         points.forEach((point, index) => {
-            ctx.fillText(String(index + 1), point.x - 4, bottom + 22);
+            ctx.fillText(
+                String(index + 1),
+                point.x - 4,
+                bottom + 22
+            );
         });
 
-        // Плавне промальовування ламаної.
+        // Анімоване промальовування.
         if (points.length > 1)
         {
             ctx.strokeStyle = "#66577a";
@@ -91,7 +94,9 @@ function drawMoodChart(records)
             ctx.beginPath();
             ctx.moveTo(points[0].x, points[0].y);
 
-            const position = progress * (points.length - 1);
+            const position =
+                progress * (points.length - 1);
+
             const completed = Math.floor(position);
 
             for (let i = 1; i <= completed; i++)
@@ -101,13 +106,15 @@ function drawMoodChart(records)
 
             if (progress < 1)
             {
-                const fraction = position - completed;
                 const current = points[completed];
                 const next = points[completed + 1];
+                const fraction = position - completed;
 
                 ctx.lineTo(
-                    current.x + (next.x - current.x) * fraction,
-                    current.y + (next.y - current.y) * fraction
+                    current.x +
+                        (next.x - current.x) * fraction,
+                    current.y +
+                        (next.y - current.y) * fraction
                 );
             }
 
@@ -115,14 +122,18 @@ function drawMoodChart(records)
         }
         else if (points.length === 1)
         {
-            // Один запис відображається як точка.
             ctx.beginPath();
-            ctx.arc(points[0].x, points[0].y, 4, 0, 2 * Math.PI);
+            ctx.arc(
+                points[0].x,
+                points[0].y,
+                4,
+                0,
+                2 * Math.PI
+            );
             ctx.fillStyle = "#66577a";
             ctx.fill();
         }
 
-        // Завершення анімації після 1 секунди.
         if (progress < 1)
         {
             chartAnimationId = requestAnimationFrame(animate);
@@ -136,22 +147,28 @@ function drawMoodChart(records)
     chartAnimationId = requestAnimationFrame(animate);
 }
 
-// Практична №13: таблиця маршрутів SPA.
-// View-функції змінюють реактивний стан Vue.
+
+// Практична №13, крок 5:
+// View-функції вибирають представлення.
+// Vue автоматично розмонтовує попередній компонент
+// і монтує новий у спільному контейнері router-view.
 
 function renderHome(vm)
 {
     vm.currentView = "home";
+    vm.selectedId = null;
 }
 
 function renderHistory(vm)
 {
     vm.currentView = "history";
+    vm.selectedId = null;
 }
 
 function renderStats(vm)
 {
     vm.currentView = "stats";
+    vm.selectedId = null;
 }
 
 function renderDetail(vm, params)
@@ -160,12 +177,15 @@ function renderDetail(vm, params)
     vm.currentView = "detail";
 }
 
+
+// Крок 3: таблиця маршрутів.
 const routes = [
     { path: "/", view: renderHome },
     { path: "/history", view: renderHistory },
     { path: "/stats", view: renderStats },
     { path: "/history/:id", view: renderDetail }
 ];
+
 
 // Крок 4: пошук маршруту та отримання параметрів.
 function matchRoute(path)
@@ -174,7 +194,8 @@ function matchRoute(path)
 
     for (const route of routes)
     {
-        const routeParts = route.path.split("/").filter(Boolean);
+        const routeParts =
+            route.path.split("/").filter(Boolean);
 
         if (routeParts.length !== pathParts.length)
         {
@@ -195,14 +216,18 @@ function matchRoute(path)
 
         if (matched)
         {
-            return { view: route.view, params };
+            return {
+                view: route.view,
+                params: params
+            };
         }
     }
 
     return null;
 }
 
-// Крок 6: перехід без перезавантаження сторінки.
+
+// Крок 6: клієнтська навігація.
 function navigate(path)
 {
     if (location.hash.slice(1) === path)
@@ -212,6 +237,7 @@ function navigate(path)
 
     location.hash = path;
 }
+
 
 // Практична №10: компонент запису настрою.
 const MoodEntry = {
@@ -278,6 +304,7 @@ const MoodEntry = {
         >
             <h3>
                 Дата: {{ date }}
+
                 <span
                     class="mood-emoji"
                     :aria-label="moodLabel"
@@ -309,15 +336,128 @@ const MoodEntry = {
     `
 };
 
+
+// Крок 5: повторне використання HTML-шаблонів.
+// Спільні дані передаються через props,
+// а дії користувача — через події.
+
+const sharedProps = {
+    moodRecords: {
+        type: Array,
+        default: () => []
+    },
+
+    selectedRecord: {
+        type: Object,
+        default: null
+    },
+
+    averageMood: {
+        type: Number,
+        default: 0
+    },
+
+    editingId: {
+        type: Number,
+        default: null
+    },
+
+    newDate: {
+        type: String,
+        default: ""
+    },
+
+    newMood: {
+        type: [String, Number],
+        default: ""
+    },
+
+    newNote: {
+        type: String,
+        default: ""
+    },
+
+    storageReady: {
+        type: Boolean,
+        default: false
+    },
+
+    storageError: {
+        type: String,
+        default: ""
+    },
+
+    apiRecords: {
+        type: Array,
+        default: () => []
+    },
+
+    isLoading: {
+        type: Boolean,
+        default: false
+    },
+
+    errorMessage: {
+        type: String,
+        default: ""
+    }
+};
+
+const sharedEmits = [
+    "save",
+    "edit",
+    "delete",
+    "cancel-edit",
+    "load-data",
+    "update:newDate",
+    "update:newMood",
+    "update:newNote"
+];
+
+function createView(templateId)
+{
+    return {
+        template: "#" + templateId,
+        components: {
+            MoodEntry
+        },
+        props: sharedProps,
+        emits: sharedEmits
+    };
+}
+
+const HomeView =
+    createView("home-view-template");
+
+const HistoryView =
+    createView("history-view-template");
+
+const DetailView =
+    createView("detail-view-template");
+
+const StatsView =
+    createView("stats-view-template");
+
+const NotFoundView =
+    createView("not-found-view-template");
+
+
+// Головний Vue-застосунок.
 const app = Vue.createApp({
     components: {
-        MoodEntry
+        MoodEntry,
+        HomeView,
+        HistoryView,
+        DetailView,
+        StatsView,
+        NotFoundView
     },
 
     data()
     {
         return {
             moodRecords: [],
+
             currentView: "home",
             selectedId: null,
 
@@ -337,6 +477,21 @@ const app = Vue.createApp({
     },
 
     computed: {
+        // Крок 5: активний компонент визначає
+        // вміст спільного контейнера router-view.
+        currentViewComponent()
+        {
+            const views = {
+                home: "HomeView",
+                history: "HistoryView",
+                stats: "StatsView",
+                detail: "DetailView",
+                notFound: "NotFoundView"
+            };
+
+            return views[this.currentView] || "NotFoundView";
+        },
+
         selectedRecord()
         {
             return this.moodRecords.find(
@@ -352,7 +507,7 @@ const app = Vue.createApp({
             }
 
             const sum = this.moodRecords.reduce(
-                (total, record) => total + record.mood,
+                (total, record) => total + Number(record.mood),
                 0
             );
 
@@ -360,14 +515,16 @@ const app = Vue.createApp({
         }
     },
 
-    // Практична №12: оновлення графіка при зміні записів.
     watch: {
+        // Практична №12: оновлення графіка.
         moodRecords: {
             handler(newRecords)
             {
                 if (this.currentView === "stats")
                 {
-                    this.$nextTick(() => drawMoodChart(newRecords));
+                    this.$nextTick(() => {
+                        drawMoodChart(newRecords);
+                    });
                 }
             },
 
@@ -376,7 +533,7 @@ const app = Vue.createApp({
     },
 
     methods: {
-        // Практична №13: відображення сторінки за маршрутом.
+        // Кроки 4–9: вибір представлення.
         renderRoute()
         {
             const path = location.hash.slice(1) || "/";
@@ -389,11 +546,14 @@ const app = Vue.createApp({
             else
             {
                 this.currentView = "notFound";
+                this.selectedId = null;
             }
 
             if (this.currentView === "stats")
             {
-                this.$nextTick(() => drawMoodChart(this.moodRecords));
+                this.$nextTick(() => {
+                    drawMoodChart(this.moodRecords);
+                });
             }
             else if (chartAnimationId !== null)
             {
@@ -402,7 +562,7 @@ const app = Vue.createApp({
             }
         },
 
-        // Практична №11: додавання або редагування запису.
+        // Практична №11: збереження або оновлення.
         async saveMoodRecord()
         {
             if (!this.storageReady)
@@ -439,7 +599,9 @@ const app = Vue.createApp({
                     {
                         const maxId = Math.max(
                             0,
-                            ...this.moodRecords.map(item => item.id)
+                            ...this.moodRecords.map(
+                                item => item.id
+                            )
                         );
 
                         record.id = maxId + 1;
@@ -449,9 +611,10 @@ const app = Vue.createApp({
                     {
                         record.id = this.editingId;
 
-                        const index = this.moodRecords.findIndex(
-                            item => item.id === this.editingId
-                        );
+                        const index =
+                            this.moodRecords.findIndex(
+                                item => item.id === this.editingId
+                            );
 
                         if (index !== -1)
                         {
@@ -496,7 +659,7 @@ const app = Vue.createApp({
             }
         },
 
-        // Практична №11: заповнення форми для редагування.
+        // Практична №11: початок редагування.
         startEditing(id)
         {
             const record = this.moodRecords.find(
@@ -513,11 +676,20 @@ const app = Vue.createApp({
             this.newMood = String(record.mood);
             this.newNote = record.note;
 
+            renderHome(this);
             navigate("/");
 
             this.$nextTick(() => {
-                document.getElementById("mood-tracker")
-                    .scrollIntoView({ behavior: "smooth" });
+                const form = document.getElementById(
+                    "mood-tracker"
+                );
+
+                if (form)
+                {
+                    form.scrollIntoView({
+                        behavior: "smooth"
+                    });
+                }
             });
         },
 
@@ -544,16 +716,16 @@ const app = Vue.createApp({
             {
                 if (STORAGE_MODE === "local")
                 {
-                    this.moodRecords = this.moodRecords.filter(
-                        item => item.id !== id
-                    );
+                    this.moodRecords =
+                        this.moodRecords.filter(
+                            item => item.id !== id
+                        );
 
                     saveToLocalStorage(this.moodRecords);
                 }
                 else
                 {
                     await deleteItem(id);
-
                     this.moodRecords = await getAllItems();
                 }
 
@@ -588,7 +760,7 @@ const app = Vue.createApp({
             }
         },
 
-        // Практична №11: завантаження записів.
+        // Практична №11: завантаження збережених даних.
         async loadSavedMoodRecords()
         {
             this.storageReady = false;
@@ -604,14 +776,18 @@ const app = Vue.createApp({
 
                     if (saved === null)
                     {
-                        saveToLocalStorage(INITIAL_MOOD_RECORDS);
+                        saveToLocalStorage(
+                            INITIAL_MOOD_RECORDS
+                        );
                     }
 
-                    this.moodRecords = loadFromLocalStorage();
+                    this.moodRecords =
+                        loadFromLocalStorage();
                 }
                 else
                 {
-                    this.moodRecords = await initializeStorage();
+                    this.moodRecords =
+                        await initializeStorage();
                 }
 
                 this.storageReady = true;
@@ -626,7 +802,7 @@ const app = Vue.createApp({
             }
         },
 
-        // Практична №9: завантаження даних через Fetch API.
+        // Практична №9: завантаження через Fetch API.
         async loadData()
         {
             this.isLoading = true;
@@ -639,7 +815,8 @@ const app = Vue.createApp({
                 if (!response.ok)
                 {
                     throw new Error(
-                        "Сервер відповів кодом " + response.status
+                        "Сервер відповів кодом " +
+                        response.status
                     );
                 }
 
@@ -671,17 +848,26 @@ const app = Vue.createApp({
 
     mounted()
     {
-        // Практична №13: реакція на зміну hash.
-        this.routeHandler = () => this.renderRoute();
+        // Крок 7: обробка hashchange.
+        this.routeHandler = () => {
+            this.renderRoute();
+        };
 
         window.addEventListener(
             "hashchange",
             this.routeHandler
         );
 
-        // Перехоплення кліків по навігаційних посиланнях.
+        // Крок 6: перехоплення внутрішніх посилань.
         this.linkHandler = (event) => {
-            const link = event.target.closest("a[data-link]");
+            const target = event.target;
+
+            if (!(target instanceof Element))
+            {
+                return;
+            }
+
+            const link = target.closest("a[data-link]");
 
             if (!link)
             {
@@ -689,10 +875,16 @@ const app = Vue.createApp({
             }
 
             event.preventDefault();
-            navigate(link.getAttribute("href").slice(1));
+
+            navigate(
+                link.getAttribute("href").slice(1)
+            );
         };
 
-        document.addEventListener("click", this.linkHandler);
+        document.addEventListener(
+            "click",
+            this.linkHandler
+        );
 
         this.renderRoute();
         this.loadSavedMoodRecords();
@@ -714,6 +906,7 @@ const app = Vue.createApp({
         if (chartAnimationId !== null)
         {
             cancelAnimationFrame(chartAnimationId);
+            chartAnimationId = null;
         }
     }
 });
